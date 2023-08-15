@@ -1,0 +1,18 @@
+
+{
+    "CmajorVersion":    1,
+    "ID":               "com.your_name.your_patch_ID",
+    "version":          "1.0",
+    "name":             "playground-01",
+    "description":      "playground-01",
+    "category":         "generator",
+    "manufacturer":     "Your Company Goes Here",
+    "isInstrument":     true,
+
+    "source":           "playground-01.cmajor",
+
+    "view":             { "src": "view/index.js",
+                          "width": 500,
+                          "height": 300,
+                          "resizable": true }
+}
