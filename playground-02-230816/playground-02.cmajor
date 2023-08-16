@@ -7,8 +7,11 @@
 // Here's a very simple graph that plays a sine-wave to get you started..
 processor playground02  [[ main ]]
 {
-    output stream float out;
+    output stream float out1;
+    output stream float out2;
+
     input value float frequency [[ name: "Frequency", min: 5.0f, max: 1000.0f, init: 440.0f ]];
+    input value float volume    [[ name: "Volume"   , min: 0.0f, max: 1.0f, init: 0.15f ]];
 
     // This is our processor's entry-point function, which is invoked
     // by the system
@@ -16,7 +19,8 @@ processor playground02  [[ main ]]
     {
         loop
         {
-            out <- volume * sin (phase);
+            out1 <- volume * sin (phase);
+            out2 <- volume * sin (phase * 2.0f);
 
             let phaseDelta = float (frequency * processor.period * twoPi);
             phase = addModulo2Pi (phase, phaseDelta);
@@ -24,6 +28,5 @@ processor playground02  [[ main ]]
         }
     }
 
-    let volume = 0.15f;
     float phase;
 }

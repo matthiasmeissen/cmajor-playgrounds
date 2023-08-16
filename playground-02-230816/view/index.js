@@ -1,82 +1,132 @@
-
-
-/*
-    This simple web component just manually creates a set of plain sliders for the
-    known parameters, and uses some listeners to connect them to the patch.
-*/
-class playground02_View extends HTMLElement
-{
-    constructor (patchConnection)
-    {
+class playground02_View extends HTMLElement {
+    constructor(patchConnection) {
         super();
         this.patchConnection = patchConnection;
+        this.dragging = false;
+        this.circleSize = 40;
+        this.boundingBoxMargin = 20;
         this.classList = "main-view-element";
-        this.innerHTML = this.getHTML();
+        this.innerHTML = this.generateUI();
     }
 
-    connectedCallback()
-    {
-        // When the HTMLElement is shown, this is a good place to connect
-        // any listeners you need to the PatchConnection object..
-
-        // First, find our frequency slider:
-        const freqSlider = this.querySelector ("#frequency");
-
-        // When the slider is moved, this will cause the new value to be sent to the patch:
-        freqSlider.oninput = () => this.patchConnection.sendEventOrValue (freqSlider.id, freqSlider.value);
-
-        // Create a listener for the frequency endpoint, so that when it changes, we update our slider..
-        this.freqListener = value => freqSlider.value = value;
-        this.patchConnection.addParameterListener (freqSlider.id, this.freqListener);
-
-        // Now request an initial update, to get our slider to show the correct starting value:
-        this.patchConnection.requestParameterValue (freqSlider.id);
-    }
-
-    disconnectedCallback()
-    {
-        // When our element is removed, this is a good place to remove
-        // any listeners that you may have added to the PatchConnection object.
-        this.patchConnection.removeParameterListener ("frequency", this.freqListener);
-    }
-
-    getHTML()
-    {
+    // UI Generation (HTML & CSS)
+    generateUI() {
         return `
-        <style>
+            ${this.generateStyles()}
+            ${this.generateHTML()}
+        `;
+    }
+
+    generateStyles() {
+        return `
+            <style>
             .main-view-element {
-                background: #bcb;
-                display: block;
+                background: hsl(0, 0%, 90%);
+                width: 100vw;
+                height: 100vh;
+                position: relative;
+                overflow: hidden;
+            }
+            .controls {
                 width: 100%;
                 height: 100%;
-                padding: 10px;
-                overflow: auto;
             }
-
-            .param {
-                display: inline-block;
-                margin: 10px;
-                width: 300px;
+            .circle {
+                width: ${this.circleSize}px;
+                height: ${this.circleSize}px;
+                border-radius: 50%;
+                background-color: blue;
+                position: absolute;
+                top: 150px;
+                left: 150px;
+                cursor: grab;
             }
-        </style>
+            </style>
+        `;
+    }
 
-        <div id="controls">
-          <p>Your GUI goes here!</p>
-          <input type="range" class="param" id="frequency" min="5" max="1000">Frequency</input>
-        </div>`;
+    generateHTML() {
+        return `
+        <div class="controls">
+            <div class="circle" id="circleDiv"></div>
+        </div>
+        `;
+    }
+
+    // Event Handlers & Lifecycle Methods
+    connectedCallback() {
+        this.circleDiv = this.querySelector('#circleDiv');
+        this.addEventListeners();
+    }
+
+    addEventListeners() {
+        this.circleDiv.addEventListener('mousedown', this.handleMouseDown.bind(this));
+        document.addEventListener('mousemove', this.handleMouseMove.bind(this));
+        document.addEventListener('mouseup', this.handleMouseUp.bind(this));
+        window.addEventListener('resize', this.handleResize.bind(this));
+    }
+
+    handleMouseDown(e) {
+        this.dragging = true;
+        this.offsetX = e.clientX - this.circleDiv.getBoundingClientRect().left;
+        this.offsetY = e.clientY - this.circleDiv.getBoundingClientRect().top;
+        this.circleDiv.style.cursor = 'grabbing';
+    }
+
+    handleMouseMove(e) {
+        if (!this.dragging) return;
+
+        const x = e.clientX - this.offsetX;
+        const y = e.clientY - this.offsetY;
+        
+        const maxWidth = this.clientWidth - this.circleSize - this.boundingBoxMargin;
+        const maxHeight = this.clientHeight - this.circleSize - this.boundingBoxMargin;
+        
+        // Clamp values to ensure circle stays within bounds
+        const clampedX = Math.max(this.boundingBoxMargin, Math.min(maxWidth, x));
+        const clampedY = Math.max(this.boundingBoxMargin, Math.min(maxHeight, y));
+        
+        this.circleDiv.style.left = clampedX + 'px';
+        this.circleDiv.style.top = clampedY + 'px';
+        
+        // Normalize position and send frequency value
+        const normalizedX = clampedX / maxWidth;
+        const normalizedY = clampedY / maxHeight;
+        this.sendFrequency(normalizedX, normalizedY);
+    }
+
+    handleMouseUp() {
+        this.dragging = false;
+        this.circleDiv.style.cursor = 'grab';
+    }
+
+    handleResize() {
+        // Ensure circle stays within bounds after resize
+        const maxWidth = this.clientWidth - this.circleSize - this.boundingBoxMargin;
+        const maxHeight = this.clientHeight - this.circleSize - this.boundingBoxMargin;
+
+        const currentX = parseInt(this.circleDiv.style.left, 10);
+        const currentY = parseInt(this.circleDiv.style.top, 10);
+
+        const clampedX = Math.max(this.boundingBoxMargin, Math.min(maxWidth, currentX));
+        const clampedY = Math.max(this.boundingBoxMargin, Math.min(maxHeight, currentY));
+
+        this.circleDiv.style.left = clampedX + 'px';
+        this.circleDiv.style.top = clampedY + 'px';
+    }
+
+    sendFrequency(normalizedValueX, normalizedValueY) {
+        const MAX_FREQUENCY = 1000;  // You can adjust this value
+        const frequency = normalizedValueX * MAX_FREQUENCY;
+        const volume = 1 - normalizedValueY;
+        this.patchConnection.sendEventOrValue("frequency", frequency);
+        this.patchConnection.sendEventOrValue("volume", volume);
     }
 }
 
-window.customElements.define ("playground02-view", playground02_View);
+// Define custom element & export main function
+window.customElements.define("playground02-view", playground02_View);
 
-/* This is the function that a host (the command line patch player, or a Cmajor plugin
-   loader, or our VScode extension, etc) will call in order to create a view for your patch.
-
-   Ultimately, a DOM element must be returned to the caller for it to append to its document.
-   However, this function can be `async` if you need to perform asyncronous tasks, such as
-   fetching remote resources for use in the view, before completing.
-*/
-export default function createPatchView (patchConnection)
-{
-    return new playground02_View (patchConnection);
+export default function createPatchView(patchConnection) {
+    return new playground02_View(patchConnection);
 }
