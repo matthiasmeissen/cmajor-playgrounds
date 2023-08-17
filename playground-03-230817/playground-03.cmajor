@@ -5,25 +5,24 @@
 */
 
 // Here's a very simple graph that plays a sine-wave to get you started..
-processor playground03  [[ main ]]
+
+graph playground03 [[ main ]]
 {
-    output stream float out;
-    input value float frequency [[ name: "Frequency", min: 5.0f, max: 1000.0f, init: 440.0f ]];
+   output stream float out;
+   input oscillator.frequencyIn;
+   input filter.frequency;
+   input filter.q;
+   input gain.volume;
 
-    // This is our processor's entry-point function, which is invoked
-    // by the system
-    void main()
-    {
-        loop
-        {
-            out <- volume * sin (phase);
+   node {
+    oscillator = std::oscillators::Phasor(float32, 440);
+    filter = std::filters::tpt::svf::Processor;
+    gain = std::levels::SmoothedGain(float32);
+   }
 
-            let phaseDelta = float (frequency * processor.period * twoPi);
-            phase = addModulo2Pi (phase, phaseDelta);
-            advance();
-        }
-    }
-
-    let volume = 0.15f;
-    float phase;
+   connection {
+    oscillator.out -> filter.in;
+    filter.out -> gain.in;
+    gain.out -> out;
+   }
 }
