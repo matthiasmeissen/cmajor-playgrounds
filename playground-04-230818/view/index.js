@@ -16,28 +16,34 @@ class playground04_View extends HTMLElement
 
     connectedCallback()
     {
-        // When the HTMLElement is shown, this is a good place to connect
-        // any listeners you need to the PatchConnection object..
+        this.paramListener = (event) =>
+        {
+            // Each of our sliders has the same IDs as an endpoint, so we can find
+            // the HTML element from the endpointID that has changed:
+            const slider = this.querySelector ("#" + event.endpointID);
 
-        // First, find our frequency slider:
-        const freqSlider = this.querySelector ("#frequency");
+            if (slider)
+                slider.value = event.value;
+        };
 
-        // When the slider is moved, this will cause the new value to be sent to the patch:
-        freqSlider.oninput = () => this.patchConnection.sendEventOrValue (freqSlider.id, freqSlider.value);
+        // Attach a parameter listener that will be triggered when any param is moved
+        this.patchConnection.addAllParameterListener (this.paramListener);
 
-        // Create a listener for the frequency endpoint, so that when it changes, we update our slider..
-        this.freqListener = value => freqSlider.value = value;
-        this.patchConnection.addParameterListener (freqSlider.id, this.freqListener);
+        for (const param of this.querySelectorAll (".param"))
+        {
+            // When one of our sliders is moved, this will send the new value to the patch.
+            param.oninput = () => this.patchConnection.sendEventOrValue (param.id, param.value);
 
-        // Now request an initial update, to get our slider to show the correct starting value:
-        this.patchConnection.requestParameterValue (freqSlider.id);
+            // for each slider, request an initial update, to make sure it shows the right value
+            this.patchConnection.requestParameterValue (param.id);
+        }
     }
 
     disconnectedCallback()
     {
-        // When our element is removed, this is a good place to remove
-        // any listeners that you may have added to the PatchConnection object.
-        this.patchConnection.removeParameterListener ("frequency", this.freqListener);
+        // when our element goes offscreen, we should remove any listeners
+        // from the PatchConnection (which may be shared with other clients)
+        this.patchConnection.removeAllParameterListener (this.paramListener);
     }
 
     getHTML()
@@ -62,7 +68,10 @@ class playground04_View extends HTMLElement
 
         <div id="controls">
           <p>Your GUI goes here!</p>
-          <input type="range" class="param" id="frequency" min="5" max="1000">Frequency</input>
+          <input type="range" class="param" id="oscillatorFrequencyParam" min="0" max="2000"">Frequency</input>
+          <input type="range" class="param" id="filterCutoffParam" min="0" max="2000"">Cutoff</input>
+          <input type="range" class="param" id="filterResonanceParam" min="0.1" max="10" step="0.01">Resonance</input>
+          <input type="range" class="param" id="gainVolumeParam" min="0" max="1" step="0.01">Volume</input>
         </div>`;
     }
 }
