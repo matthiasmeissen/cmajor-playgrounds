@@ -1,56 +1,63 @@
 
-
 /*
     This simple web component just manually creates a set of plain sliders for the
     known parameters, and uses some listeners to connect them to the patch.
 */
-class playground05_View extends HTMLElement
-{
-    constructor (patchConnection)
-    {
+class playground05_View extends HTMLElement {
+    constructor(patchConnection) {
         super();
         this.patchConnection = patchConnection;
         this.classList = "main-view-element";
         this.innerHTML = this.getHTML();
     }
 
-    connectedCallback()
-    {
-        // When the HTMLElement is shown, this is a good place to connect
-        // any listeners you need to the PatchConnection object..
+    connectedCallback() {
+        // Connecting elements by using the same name as the endpoint in the patch
+        // Add Frequency Slider
+        const freqSlider = this.querySelector("#frequencyParam")
+        freqSlider.oninput = () => this.patchConnection.sendEventOrValue(freqSlider.id, freqSlider.value);
 
-        // First, find our frequency slider:
-        const freqSlider = this.querySelector ("#frequency");
-
-        // When the slider is moved, this will cause the new value to be sent to the patch:
-        freqSlider.oninput = () => this.patchConnection.sendEventOrValue (freqSlider.id, freqSlider.value);
-
-        // Create a listener for the frequency endpoint, so that when it changes, we update our slider..
-        this.freqListener = value => freqSlider.value = value;
-        this.patchConnection.addParameterListener (freqSlider.id, this.freqListener);
-
-        // Now request an initial update, to get our slider to show the correct starting value:
-        this.patchConnection.requestParameterValue (freqSlider.id);
+        // Add Note Button
+        const midiSendButton = this.querySelector("#midiIn");
+        midiSendButton.onmousedown = () => this.patchConnection.sendMIDIInputEvent(midiSendButton.id, 9452644); // Note On
+        midiSendButton.onmouseup = () => this.patchConnection.sendMIDIInputEvent(midiSendButton.id, 8404032); // Note Off
     }
 
-    disconnectedCallback()
-    {
-        // When our element is removed, this is a good place to remove
-        // any listeners that you may have added to the PatchConnection object.
-        this.patchConnection.removeParameterListener ("frequency", this.freqListener);
+    disconnectedCallback() {
+        this.patchConnection.removeParameterListener("frequencyParam", this.freqListener);
     }
 
-    getHTML()
-    {
+    getHTML() {
         return `
         <style>
             .main-view-element {
-                background: #bcb;
+                background: hsl(0deg, 0%, 90%);
                 display: block;
-                width: 100%;
-                height: 100%;
+                width: 100vw;
+                height: 100vh;
                 padding: 10px;
                 overflow: auto;
+            }
+
+            .controls {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .inputType {
+                width: 100%;
+                padding: 10px;
+                border: 1px solid black;
+                border-radius: 5px;
+                display: flex;
+                flex-direction: column;
+            }
+
+            button {
+                width: fit-content;
+                background: hsl(0deg, 0%, 20%);
+                color: hsl(0deg, 0%, 90%);
             }
 
             .param {
@@ -60,23 +67,21 @@ class playground05_View extends HTMLElement
             }
         </style>
 
-        <div id="controls">
+        <div class="controls">
           <p>Your GUI goes here!</p>
-          <input type="range" class="param" id="frequency" min="5" max="1000">Frequency</input>
+
+          <div class='inputType'>
+            <label for="frequencyParam">Frequency</label>
+            <input type="range" class="param" id="frequencyParam" min="5" max="1000" />
+          </div>
+
+          <button id="midiIn">Send Note</button>
         </div>`;
     }
 }
 
-window.customElements.define ("playground05-view", playground05_View);
+window.customElements.define("playground05-view", playground05_View);
 
-/* This is the function that a host (the command line patch player, or a Cmajor plugin
-   loader, or our VScode extension, etc) will call in order to create a view for your patch.
-
-   Ultimately, a DOM element must be returned to the caller for it to append to its document.
-   However, this function can be `async` if you need to perform asyncronous tasks, such as
-   fetching remote resources for use in the view, before completing.
-*/
-export default function createPatchView (patchConnection)
-{
-    return new playground05_View (patchConnection);
+export default function createPatchView(patchConnection) {
+    return new playground05_View(patchConnection);
 }

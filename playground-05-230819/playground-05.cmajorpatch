@@ -12,7 +12,5 @@
     "source":           "playground-05.cmajor",
 
     "view":             { "src": "view/index.js",
-                          "width": 500,
-                          "height": 300,
                           "resizable": true }
 }
