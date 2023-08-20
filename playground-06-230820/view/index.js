@@ -19,10 +19,28 @@ class playground05_View extends HTMLElement {
         this.currentNoteIndex = 0;
     }
 
+    compileSequence() {
+        // Get input value
+        let input = this.querySelector('#sequenceInput').value;
+
+        // Transform the input into the desired format
+        let lines = input.split(',\n');
+        let sequence = [];
+
+        for(let line of lines) {
+            let [note, velocity, duration] = line.match(/\d+/g).map(Number);
+            sequence.push({ note, velocity, duration });
+        }
+
+        // Update the sequence of the web component
+        this.sequence = sequence;
+    }
+
     sendMIDINote(note, velocity, channel = 0) {
         const status = 0x90 + channel; // Note On for channel
         const midiMessage = (status << 16) | (note << 8) | velocity;
         this.patchConnection.sendMIDIInputEvent("midiIn", midiMessage);
+        this.patchConnection.sendEventOrValue("gainParam", velocity / 127);
         console.log(`Sending Note On: Note=${note}, Velocity=${velocity}`);
     }
     
@@ -60,12 +78,18 @@ class playground05_View extends HTMLElement {
         midiSendButton.onmousedown = () => this.patchConnection.sendMIDIInputEvent(midiSendButton.id, 9452644); // Note On
         midiSendButton.onmouseup = () => this.patchConnection.sendMIDIInputEvent(midiSendButton.id, 8404032); // Note Off
 
+        this.querySelector("#compileButton").addEventListener('click', () => this.compileSequence());
+
         this.playSequence();
     }
 
     getHTML() {
         return `
         <style>
+            body {
+                margin: 0;
+                font-family: sans-serif;
+            }
             .main-view-element {
                 background: hsl(0deg, 0%, 90%);
                 display: block;
@@ -82,9 +106,19 @@ class playground05_View extends HTMLElement {
             }
 
             button {
+                font-family: sans-serif;
+                font-size: 16px;
                 width: fit-content;
+                padding: 10px;
                 background: hsl(0deg, 0%, 20%);
                 color: hsl(0deg, 0%, 90%);
+            }
+
+            textarea {
+                width: 100%;
+                font-family: 'Courier New', monospace;
+                font-size: 20px;
+                margin-top: 10px;
             }
 
             .param {
@@ -96,6 +130,13 @@ class playground05_View extends HTMLElement {
 
         <div class="controls">
           <p>Your GUI goes here!</p>
+          <textarea id="sequenceInput" rows="10" cols="30">
+(60, 120, 400),
+(62, 120, 1200),
+(64, 120, 800),
+(65, 120, 200)
+</textarea>
+          <button id="compileButton">Compile</button>
           <button id="midiIn">Send Note</button>
         </div>`;
     }
