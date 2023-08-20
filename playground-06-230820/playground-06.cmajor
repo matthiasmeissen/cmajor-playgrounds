@@ -15,7 +15,6 @@ graph playground06 [[main]]
 
     node
     {
-        // Create a voice node from the Voice graph
         noteToFrequency = NoteToFrequency;
         osc1 = Oscillator;
         envelope = std::envelopes::FixedASR (0.01f, 0.1f);

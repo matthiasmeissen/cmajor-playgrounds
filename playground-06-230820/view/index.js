@@ -41,14 +41,12 @@ class playground05_View extends HTMLElement {
         const midiMessage = (status << 16) | (note << 8) | velocity;
         this.patchConnection.sendMIDIInputEvent("midiIn", midiMessage);
         this.patchConnection.sendEventOrValue("gainParam", velocity / 127);
-        console.log(`Sending Note On: Note=${note}, Velocity=${velocity}`);
     }
     
     sendMIDINoteOff(note, channel = 0) {
         const status = 0x80 + channel; // Note Off for channel
         const midiMessage = (status << 16) | (note << 8);
         this.patchConnection.sendMIDIInputEvent("midiIn", midiMessage);
-        console.log(`Sending Note Off: Note=${note}`);
     }
 
     playSequence() {
