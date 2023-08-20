@@ -5,25 +5,62 @@
 */
 
 // Here's a very simple graph that plays a sine-wave to get you started..
-processor playground06  [[ main ]]
+graph playground06 [[main]] 
 {
     output stream float out;
-    input value float frequency [[ name: "Frequency", min: 5.0f, max: 1000.0f, init: 440.0f ]];
+    input event std::midi::Message midiIn;
 
-    // This is our processor's entry-point function, which is invoked
-    // by the system
-    void main()
+    input event float32 frequencyParam [[name: "Frequency", min: 0, max: 2000, init: 440]];
+
+    node
     {
-        loop
-        {
-            out <- volume * sin (phase);
-
-            let phaseDelta = float (frequency * processor.period * twoPi);
-            phase = addModulo2Pi (phase, phaseDelta);
-            advance();
-        }
+        // Create a voice node from the Voice graph
+        noteToFrequency = NoteToFrequency;
+        osc1 = Oscillator;
+        envelope = std::envelopes::FixedASR (0.01f, 0.1f);
     }
 
-    let volume = 0.15f;
-    float phase;
+    connection
+    {
+        // Use mpe converter to convert midi messages to note events
+        // Send the note one events to trigger the envelope
+        midiIn -> std::midi::MPEConverter -> envelope.eventIn;
+        midiIn -> std::midi::MPEConverter -> noteToFrequency -> osc1.frequencyIn;
+
+        // Multiply the envelope gain with the oscillator output
+        (envelope.gainOut * osc1.out) -> out;
+    }
+}
+
+graph Oscillator 
+{
+    output stream float out;
+    input event float frequencyIn;
+    
+    node {
+        phasor = std::oscillators::Phasor (float32);
+        sine = std::oscillators::Sine (float32);
+        mixer = std::mixers::ConstantSum (float32, 0.5f, 0.5f);
+    }
+
+    connection {
+        frequencyIn -> phasor.frequencyIn;
+        frequencyIn -> sine.frequencyIn;
+
+        phasor.out -> mixer.in1;
+        sine.out -> mixer.in2;
+
+        mixer.out -> out;
+    }
+}
+
+processor NoteToFrequency
+{
+    input event std::notes::NoteOn eventIn;
+    output event float32 frequencyOut;
+
+    event eventIn (std::notes::NoteOn e)
+    {
+        frequencyOut <- std::notes::noteToFrequency (e.pitch);
+    }
 }
